@@ -5,11 +5,12 @@
 #![feature(abi_x86_interrupt)]
 #![feature(alloc_error_handler)]
 #![feature(const_in_array_repeat_expressions)]
+#![feature(wake_trait)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
-extern crate rlibc;
 extern crate alloc;
+extern crate rlibc;
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
@@ -20,6 +21,7 @@ pub mod gdt;
 pub mod interrupts;
 pub mod memory;
 pub mod serial;
+pub mod task;
 pub mod vga;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

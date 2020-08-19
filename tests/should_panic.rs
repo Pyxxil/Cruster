@@ -5,7 +5,7 @@
 #![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
-use cruster::{QemuExitCode, exit_qemu, serial_print, serial_println};
+use cruster::{exit_qemu, serial_print, serial_println, QemuExitCode};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

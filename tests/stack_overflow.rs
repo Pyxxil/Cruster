@@ -2,12 +2,12 @@
 #![no_main]
 #![feature(abi_x86_interrupt)]
 
+use core::panic::PanicInfo;
 use lazy_static::lazy_static;
 use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
-use core::panic::PanicInfo;
 
 use cruster::serial_print;
-use cruster::{exit_qemu, QemuExitCode, serial_println};
+use cruster::{exit_qemu, serial_println, QemuExitCode};
 
 extern "x86-interrupt" fn test_double_fault_handler(
     _stack_frame: &mut InterruptStackFrame,
