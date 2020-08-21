@@ -6,10 +6,14 @@
 
 extern crate alloc;
 
+use alloc::string::String;
 use bootloader::{entry_point, BootInfo};
 use core::panic::PanicInfo;
+use futures_util::StreamExt;
+use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
 
-use cruster::println;
+use cruster::{print, println};
+use cruster::task::keyboard::ScancodeStream;
 
 entry_point!(kernel_main);
 
@@ -20,7 +24,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use cruster::memory;
     use cruster::memory::BootInfoFrameAllocator;
     use cruster::task::executor::Executor;
-    use cruster::task::{keyboard, Task};
+    use cruster::task::Task;
 
     println!("Hello World{}", "!");
 
@@ -34,11 +38,12 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let page = Page::containing_address(VirtAddr::new(0xdeadbeaf000));
     memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
 
+
     allocator::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
 
+
     let mut executor = Executor::new();
-    executor.spawn(Task::new(example_task()));
-    executor.spawn(Task::new(keyboard::print_keypresses()));
+    executor.spawn(Task::new(shell()));
     executor.run();
 
     #[cfg(test)]
@@ -47,13 +52,44 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     cruster::hlt_loop();
 }
 
-async fn async_number() -> u32 {
-    42
+async fn input(stream: &mut ScancodeStream) -> String {
+    let mut keyboard = Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore);
+
+    let mut inp = String::new();
+
+    while inp.chars().last() != Some('\n') {
+        if let Some(scancode) = stream.next().await {
+            if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+                if let Some(key) = keyboard.process_keyevent(key_event) {
+                    match key {
+                        DecodedKey::Unicode(character) => {
+                            print!("{}", character);
+                            inp.push(character);
+                        },
+                        DecodedKey::RawKey(key) => println!("{:?}", key),
+                    }
+                }
+            }
+        }
+    }
+
+    inp.chars().take_while(|ch| ch != &'\n').collect()
 }
 
-async fn example_task() {
-    let number = async_number().await;
-    println!("async number: {}", number);
+async fn shell() {
+    let mut stream = ScancodeStream::new();
+
+    loop {
+        print!("> ");
+        let inp = input(&mut stream).await;
+
+        if !inp.is_empty() {
+            match inp.as_str() {
+                "help" => println!("This is a simple help string"),
+                _ => println!("Unrecognised command"),
+            }
+        }
+    }
 }
 
 /// This function is called on panic.
